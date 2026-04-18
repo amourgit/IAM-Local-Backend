@@ -1,0 +1,12 @@
+# Groupes natifs du module IAM Local
+
+groupes:
+
+  - code: super_admin
+    nom: Super Administrateurs
+    description: >
+      Groupe des super administrateurs de l'établissement.
+      Les membres ont accès complet à toute la plateforme.
+    type_groupe: fonctionnel
+    roles:
+      - iam.admin

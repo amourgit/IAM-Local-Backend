@@ -1,0 +1,197 @@
+# Permissions natives du module IAM Local
+# Format: domaine.ressource.action
+# Ces permissions sont créées au bootstrap et restent permanentes.
+
+source: iam-local
+
+permissions:
+
+  # ── Permissions ───────────────────────────────────────
+  - code: iam.permission.administrer
+    libelle: Administrer les permissions
+    description: Créer, modifier, supprimer les permissions du système
+    domaine: iam
+    ressource: permission
+    action: administrer
+
+  - code: iam.permission.consulter
+    libelle: Consulter les permissions
+    description: Lire la liste des permissions disponibles
+    domaine: iam
+    ressource: permission
+    action: consulter
+
+  # ── Rôles ─────────────────────────────────────────────
+  - code: iam.role.creer
+    libelle: Créer un rôle
+    description: Créer de nouveaux rôles dans le système
+    domaine: iam
+    ressource: role
+    action: creer
+
+  - code: iam.role.consulter
+    libelle: Consulter les rôles
+    description: Lire la liste et le détail des rôles
+    domaine: iam
+    ressource: role
+    action: consulter
+
+  - code: iam.role.modifier
+    libelle: Modifier un rôle
+    description: Modifier les propriétés et permissions d'un rôle
+    domaine: iam
+    ressource: role
+    action: modifier
+
+  - code: iam.role.supprimer
+    libelle: Supprimer un rôle
+    description: Supprimer un rôle du système
+    domaine: iam
+    ressource: role
+    action: supprimer
+
+  - code: iam.role.assigner
+    libelle: Assigner un rôle
+    description: Attribuer un rôle à un profil utilisateur
+    domaine: iam
+    ressource: role
+    action: assigner
+
+  - code: iam.role.revoquer
+    libelle: Révoquer un rôle
+    description: Retirer un rôle d'un profil utilisateur
+    domaine: iam
+    ressource: role
+    action: revoquer
+
+  # ── Groupes ───────────────────────────────────────────
+  - code: iam.groupe.creer
+    libelle: Créer un groupe
+    description: Créer de nouveaux groupes d'utilisateurs
+    domaine: iam
+    ressource: groupe
+    action: creer
+
+  - code: iam.groupe.consulter
+    libelle: Consulter les groupes
+    description: Lire la liste et le détail des groupes
+    domaine: iam
+    ressource: groupe
+    action: consulter
+
+  - code: iam.groupe.modifier
+    libelle: Modifier un groupe
+    description: Modifier les propriétés d'un groupe
+    domaine: iam
+    ressource: groupe
+    action: modifier
+
+  - code: iam.groupe.supprimer
+    libelle: Supprimer un groupe
+    description: Supprimer un groupe du système
+    domaine: iam
+    ressource: groupe
+    action: supprimer
+
+  - code: iam.groupe.membre.ajouter
+    libelle: Ajouter membre au groupe
+    description: Ajouter un utilisateur à un groupe
+    domaine: iam
+    ressource: groupe
+    action: membre.ajouter
+
+  - code: iam.groupe.membre.retirer
+    libelle: Retirer membre du groupe
+    description: Retirer un utilisateur d'un groupe
+    domaine: iam
+    ressource: groupe
+    action: membre.retirer
+
+  # ── Profils ───────────────────────────────────────────
+  - code: iam.profil.creer
+    libelle: Créer un profil
+    description: Créer un nouveau profil utilisateur local
+    domaine: iam
+    ressource: profil
+    action: creer
+
+  - code: iam.profil.consulter
+    libelle: Consulter les profils
+    description: Lire la liste et le détail des profils
+    domaine: iam
+    ressource: profil
+    action: consulter
+
+  - code: iam.profil.modifier
+    libelle: Modifier un profil
+    description: Modifier les informations d'un profil
+    domaine: iam
+    ressource: profil
+    action: modifier
+
+  - code: iam.profil.suspendre
+    libelle: Suspendre un profil
+    description: Suspendre l'accès d'un utilisateur
+    domaine: iam
+    ressource: profil
+    action: suspendre
+
+  - code: iam.profil.supprimer
+    libelle: Supprimer un profil
+    description: Supprimer un profil du système
+    domaine: iam
+    ressource: profil
+    action: supprimer
+
+  # ── Habilitations ─────────────────────────────────────
+  - code: iam.habilitation.consulter
+    libelle: Consulter les habilitations
+    description: Voir les permissions effectives d'un profil
+    domaine: iam
+    ressource: habilitation
+    action: consulter
+
+  - code: iam.habilitation.verifier
+    libelle: Vérifier une habilitation
+    description: Vérifier si un profil a une permission donnée
+    domaine: iam
+    ressource: habilitation
+    action: verifier
+
+  # ── Délégations ───────────────────────────────────────
+  - code: iam.delegation.creer
+    libelle: Créer une délégation
+    description: Déléguer des permissions à un autre profil
+    domaine: iam
+    ressource: delegation
+    action: creer
+
+  - code: iam.delegation.consulter
+    libelle: Consulter les délégations
+    description: Voir les délégations actives
+    domaine: iam
+    ressource: delegation
+    action: consulter
+
+  - code: iam.delegation.revoquer
+    libelle: Révoquer une délégation
+    description: Annuler une délégation active
+    domaine: iam
+    ressource: delegation
+    action: revoquer
+
+  # ── Audit ─────────────────────────────────────────────
+  - code: iam.audit.consulter
+    libelle: Consulter le journal d'audit
+    description: Accéder au journal des accès et actions
+    domaine: iam
+    ressource: audit
+    action: consulter
+
+  # ── Configuration ─────────────────────────────────────
+  - code: iam.configuration.administrer
+    libelle: Administrer la configuration IAM
+    description: Configurer les paramètres globaux du module IAM
+    domaine: iam
+    ressource: configuration
+    action: administrer

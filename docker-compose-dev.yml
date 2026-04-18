@@ -1,0 +1,49 @@
+version: "3.9"
+
+# ════════════════════════════════════════════════════════════════════
+# Module 02 — IAM Local — DÉVELOPPEMENT
+# Ne déploie que: Application + PostgreSQL
+# Pas de build — utilise l'image existante
+# Les services partagés (Redis, Kafka) viennent du docker-compose.infra.yml
+# ════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── PostgreSQL Local ─────────────────────────────────────────
+  # Base de données dédiée au module IAM Local
+  postgres:
+    image: postgres:16-alpine
+    container_name: module02-iam-local-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iam_local
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - module02-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  pg_data:
+    driver: local
+
+networks:
+  module02-net:
+    driver: bridge
+    name: module02-net
+  national-net:
+    external: true
+    name: national-net

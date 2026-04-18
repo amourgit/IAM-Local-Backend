@@ -1,0 +1,111 @@
+# Rôles natifs du module IAM Local
+# Créés au bootstrap — permanents sauf role_temp
+
+roles:
+
+  # ── Rôle admin complet ────────────────────────────────
+  - code: iam.admin
+    libelle: Administrateur IAM
+    description: >
+      Accès complet à toutes les fonctions IAM.
+      Attribué au premier administrateur réel de l'établissement.
+    type_role: systeme
+    permissions:
+      - iam.permission.administrer
+      - iam.permission.consulter
+      - iam.role.creer
+      - iam.role.consulter
+      - iam.role.modifier
+      - iam.role.supprimer
+      - iam.role.assigner
+      - iam.role.revoquer
+      - iam.groupe.creer
+      - iam.groupe.consulter
+      - iam.groupe.modifier
+      - iam.groupe.supprimer
+      - iam.groupe.membre.ajouter
+      - iam.groupe.membre.retirer
+      - iam.profil.creer
+      - iam.profil.consulter
+      - iam.profil.modifier
+      - iam.profil.suspendre
+      - iam.profil.supprimer
+      - iam.habilitation.consulter
+      - iam.habilitation.verifier
+      - iam.delegation.creer
+      - iam.delegation.consulter
+      - iam.delegation.revoquer
+      - iam.audit.consulter
+      - iam.configuration.administrer
+
+  # ── Rôle gestionnaire ─────────────────────────────────
+  - code: iam.manager
+    libelle: Gestionnaire IAM
+    description: >
+      Gestion des utilisateurs et groupes.
+      Ne peut pas modifier la configuration système.
+    type_role: systeme
+    permissions:
+      - iam.permission.consulter
+      - iam.role.consulter
+      - iam.role.assigner
+      - iam.role.revoquer
+      - iam.groupe.consulter
+      - iam.groupe.membre.ajouter
+      - iam.groupe.membre.retirer
+      - iam.profil.creer
+      - iam.profil.consulter
+      - iam.profil.modifier
+      - iam.profil.suspendre
+      - iam.habilitation.consulter
+      - iam.habilitation.verifier
+      - iam.audit.consulter
+
+  # ── Rôle lecteur ──────────────────────────────────────
+  - code: iam.reader
+    libelle: Lecteur IAM
+    description: >
+      Accès lecture seule à toutes les ressources IAM.
+      Utile pour les auditeurs et superviseurs.
+    type_role: systeme
+    permissions:
+      - iam.permission.consulter
+      - iam.role.consulter
+      - iam.groupe.consulter
+      - iam.profil.consulter
+      - iam.habilitation.consulter
+      - iam.audit.consulter
+
+  # ── Rôle système ──────────────────────────────────────
+  - code: iam.system
+    libelle: Service Système
+    description: >
+      Rôle attribué aux microservices de la plateforme.
+      Permet la vérification d'habilitations inter-services.
+    type_role: systeme
+    permissions:
+      - iam.habilitation.verifier
+      - iam.profil.consulter
+
+  # ── Rôle temporaire bootstrap ─────────────────────────
+  # Ce rôle contient les permissions STRICTEMENT nécessaires
+  # pour créer le premier administrateur réel.
+  # Les permissions listées ici sont ordinaires —
+  # elles sont "temp" uniquement parce qu'elles sont dans CE rôle.
+  # Ce rôle NE DOIT PAS être attribué à d'autres profils.
+  - code: iam.admin_temp
+    libelle: Administrateur Temporaire Bootstrap
+    description: >
+      Rôle système exclusif au profil bootstrap.
+      Limité à la création du premier administrateur réel.
+      Doit être révoqué et supprimé après installation.
+    type_role: systeme
+    is_bootstrap: true
+    permissions:
+      - iam.profil.creer
+      - iam.profil.consulter
+      - iam.profil.modifier
+      - iam.role.consulter
+      - iam.role.assigner
+      - iam.groupe.consulter
+      - iam.groupe.membre.ajouter
