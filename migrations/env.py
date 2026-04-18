@@ -1,6 +1,6 @@
 import asyncio
 from logging.config import fileConfig
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
@@ -49,6 +49,12 @@ async def run_async_migrations() -> None:
         poolclass = pool.NullPool,
     )
     async with connectable.connect() as connection:
+        # Vider alembic_version si la révision référencée n'existe plus
+        # Cela permet de repartir proprement sans erreur "Can't locate revision"
+        await connection.execute(
+            text("DROP TABLE IF EXISTS alembic_version")
+        )
+        await connection.commit()
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
 
