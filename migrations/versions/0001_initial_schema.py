@@ -28,7 +28,7 @@ def upgrade() -> None:
         'role_permission_details','role_permissions',
         'roles','permissions','permission_sources',
     ]:
-        conn.execute(sa.text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE'))
+        op.execute(sa.text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE'))
     op.execute(sa.text("SET session_replication_role = DEFAULT"))
 
     # ── 1. permission_sources ─────────────────────────────────────
