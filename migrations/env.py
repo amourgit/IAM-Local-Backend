@@ -48,14 +48,10 @@ async def run_async_migrations() -> None:
         prefix    = "sqlalchemy.",
         poolclass = pool.NullPool,
     )
-    async with connectable.connect() as connection:
-        # Vider alembic_version si la révision référencée n'existe plus
-        # Cela permet de repartir proprement sans erreur "Can't locate revision"
-        await connection.execute(
-            text("DROP TABLE IF EXISTS alembic_version")
-        )
-        await connection.commit()
-        await connection.run_sync(do_run_migrations)
+    async with connectable.begin() as conn:
+        # Vider alembic_version pour repartir proprement
+        await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        await conn.run_sync(do_run_migrations)
     await connectable.dispose()
 
 

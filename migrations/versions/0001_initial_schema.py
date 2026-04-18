@@ -17,11 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-
-    # ── 0. Reset alembic_version et nettoyage propre ──────────────
-    conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version"))
-    conn.execute(sa.text("SET session_replication_role = replica"))
+    # ── 0. Reset et nettoyage propre ─────────────────────────────
+    op.execute(sa.text("SET session_replication_role = replica"))
     for tbl in [
         'token_manager','token_settings',
         'endpoint_permissions','journal_acces','delegations',
@@ -32,7 +29,7 @@ def upgrade() -> None:
         'roles','permissions','permission_sources',
     ]:
         conn.execute(sa.text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE'))
-    conn.execute(sa.text("SET session_replication_role = DEFAULT"))
+    op.execute(sa.text("SET session_replication_role = DEFAULT"))
 
     # ── 1. permission_sources ─────────────────────────────────────
     op.create_table('permission_sources',
@@ -407,7 +404,7 @@ def upgrade() -> None:
 
     # ── Source IAM Local ──────────────────────────────────────────
     source_id = str(uuid.uuid4())
-    conn.execute(sa.text("""
+    op.execute(sa.text("""
         INSERT INTO permission_sources
             (id, code, nom, description, version, url_base, actif,
              nb_permissions, created_at, updated_at)
@@ -456,7 +453,7 @@ def upgrade() -> None:
     for code, nom, domaine, ressource, action in permissions_data:
         pid = str(uuid.uuid4())
         perm_ids[code] = pid
-        conn.execute(sa.text("""
+        op.execute(sa.text("""
             INSERT INTO permissions
                 (id, code, nom, domaine, ressource, action,
                  niveau_risque, actif, necessite_perimetre, deprecated,
@@ -470,7 +467,7 @@ def upgrade() -> None:
                "source_id": source_id, "now": now})
 
     # Mettre à jour nb_permissions
-    conn.execute(sa.text(
+    op.execute(sa.text(
         "UPDATE permission_sources SET nb_permissions = :n WHERE id = :id"
     ), {"n": len(perm_ids), "id": source_id})
 
@@ -521,7 +518,7 @@ def upgrade() -> None:
     for code, data in roles_data.items():
         rid = str(uuid.uuid4())
         role_ids[code] = rid
-        conn.execute(sa.text("""
+        op.execute(sa.text("""
             INSERT INTO roles
                 (id, code, nom, type_role, actif, systeme, created_at, updated_at)
             VALUES
@@ -531,14 +528,14 @@ def upgrade() -> None:
 
         for pcode in data["perms"]:
             if pcode in perm_ids:
-                conn.execute(sa.text("""
+                op.execute(sa.text("""
                     INSERT INTO role_permissions (role_id, permission_id)
                     VALUES (:rid, :pid)
                 """), {"rid": rid, "pid": perm_ids[pcode]})
 
     # ── Groupe super_admin ────────────────────────────────────────
     grp_id = str(uuid.uuid4())
-    conn.execute(sa.text("""
+    op.execute(sa.text("""
         INSERT INTO groupes
             (id, code, nom, description, type_groupe, actif, systeme, created_at, updated_at)
         VALUES
@@ -547,15 +544,14 @@ def upgrade() -> None:
     """), {"id": grp_id, "now": now})
 
     grp_role_id = str(uuid.uuid4())
-    conn.execute(sa.text("""
+    op.execute(sa.text("""
         INSERT INTO groupe_roles (id, groupe_id, role_id, created_at, updated_at)
         VALUES (:id, :gid, :rid, :now, :now)
     """), {"id": grp_role_id, "gid": grp_id, "rid": role_ids["iam.admin"], "now": now})
 
 
 def downgrade() -> None:
-    conn = op.get_bind()
-    conn.execute(sa.text("SET session_replication_role = replica"))
+    op.execute(sa.text("SET session_replication_role = replica"))
     for tbl in [
         'token_manager','token_settings',
         'endpoint_permissions','journal_acces','delegations',
@@ -565,5 +561,5 @@ def downgrade() -> None:
         'role_permission_details','role_permissions',
         'roles','permissions','permission_sources',
     ]:
-        conn.execute(sa.text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE'))
-    conn.execute(sa.text("SET session_replication_role = DEFAULT"))
+        op.execute(sa.text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE'))
+    op.execute(sa.text("SET session_replication_role = DEFAULT"))
