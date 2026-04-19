@@ -318,27 +318,35 @@ EIGEN_National_Backend_IAM_Local_V1/
 
 ```bash
 # 1. Cloner le projet
-git clone https://github.com/amourgit/EIGEN_National_Backend_IAM_Local_V1.git
-cd EIGEN_National_Backend_IAM_Local_V1
+git clone https://github.com/amourgit/IAM-Local-Backend.git
+cd IAM-Local-Backend
 
 # 2. Copier et configurer l'environnement
 cp .env.example .env
 # Éditer .env avec vos valeurs
 
-# 3. Démarrer PostgreSQL
-docker compose -f docker-compose-dev.yml up -d
+# 3. Tout en une commande (docker + install + migrate + bootstrap + run)
+make setup-dev
+```
 
-# 4. Installer les dépendances Python
-pip install -e .
+### Étape par étape
 
-# 5. Appliquer les migrations
-alembic upgrade head
+```bash
+# 1. Démarrer PostgreSQL (port 5433), Redis, Kafka
+make docker-dev
 
-# 6. Lancer le bootstrap (premier démarrage uniquement)
-python seeds/scripts/run_bootstrap.py
+# 2. Installer les dépendances Python
+make install
 
-# 7. Démarrer l'application
-uvicorn app.main:app --reload --port 8002
+# 3. Générer et appliquer les migrations depuis les modèles
+make migrate-auto    # génère la migration depuis les modèles SQLAlchemy
+make migrate         # applique : alembic upgrade head
+
+# 4. Lancer le bootstrap (UNE SEULE FOIS — crée seeds + profil admin temporaire)
+make bootstrap
+
+# 5. Démarrer l'API (port 8002, rechargement automatique)
+make run
 ```
 
 ### Sans Docker
@@ -346,10 +354,11 @@ uvicorn app.main:app --reload --port 8002
 ```bash
 # PostgreSQL et Redis doivent être déjà démarrés
 
-pip install -e .
-alembic upgrade head
-python seeds/scripts/run_bootstrap.py
-uvicorn app.main:app --reload --port 8002
+make install
+make migrate-auto   # génère la migration
+make migrate        # applique alembic upgrade head
+make bootstrap      # insère seeds + crée profil bootstrap
+make run
 ```
 
 ### Vérification
@@ -448,27 +457,36 @@ Dès que l'admin réel se connecte pour la première fois, le profil bootstrap e
 
 > ⚠️ **Toutes les anciennes migrations ont été supprimées.** Le projet repart proprement avec une seule migration initiale à générer.
 
-### Générer la migration initiale
+### Générer et appliquer les migrations
 
 ```bash
-# S'assurer que la DB est vide (ou droppée)
-alembic revision --autogenerate -m "initial_schema_compte_local_profil_local"
-alembic upgrade head
-```
+# Générer automatiquement depuis les modèles SQLAlchemy
+make migrate-auto
+# ou avec un message personnalisé :
+make migrate-create msg="ajout_champ_xxx"
 
-### Workflow standard
+# Appliquer toutes les migrations
+make migrate         # = alembic upgrade head
 
-```bash
-# Après modification d'un modèle
-alembic revision --autogenerate -m "description_du_changement"
-alembic upgrade head
-
-# Rollback
+# Rollback d'une migration
 alembic downgrade -1
 
 # Voir l'historique
 alembic history
 alembic current
+```
+
+### Repartir de zéro (reset complet)
+
+```bash
+# Supprimer le volume Docker et repartir proprement
+make docker-clean-dev
+make docker-dev
+sleep 3
+make migrate-auto
+make migrate
+make bootstrap
+make run
 ```
 
 ### Tables créées
