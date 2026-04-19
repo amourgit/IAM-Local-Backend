@@ -501,3 +501,132 @@ async def admin_reset_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erreur réinitialisation mot de passe: {str(e)}"
         )
+
+
+# ══════════════════════════════════════════════════════════════
+# DEVICES
+# ══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/devices",
+    summary = "Mes devices connus",
+    description = "Liste tous les devices depuis lesquels ce profil s'est connecté.",
+)
+async def get_my_devices(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> list:
+    token_manager = TokenManager()
+    return await token_manager.get_user_devices(current_user.profil_id)
+
+
+@router.delete(
+    "/devices/{device_id}",
+    status_code = 204,
+    summary     = "Révoquer un device",
+    description = "Révoque un device et sa session active.",
+)
+async def revoke_device(
+    device_id   : str,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> None:
+    token_manager = TokenManager()
+    await token_manager.revoke_device(current_user.profil_id, device_id)
+
+
+@router.post(
+    "/devices/{device_id}/trust",
+    summary = "Marquer un device comme de confiance",
+)
+async def trust_device(
+    device_id   : str,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    token_manager = TokenManager()
+    ok = await token_manager.trust_device(device_id)
+    return {"trusted": ok, "device_id": device_id}
+
+
+@router.delete(
+    "/devices",
+    status_code = 204,
+    summary     = "Révoquer tous les devices",
+    description = "Déconnecte toutes les sessions sur tous les devices.",
+)
+async def revoke_all_devices(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> None:
+    token_manager = TokenManager()
+    await token_manager.revoke_user_sessions(
+        current_user.profil_id, reason="user_revoke_all_devices"
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# AUDIT
+# ══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/audit",
+    summary     = "Historique d'audit de mes tokens/sessions",
+    description = "Retourne l'historique complet des événements tokens pour ce profil.",
+)
+async def get_token_audit(
+    limit       : int          = 50,
+    current_user: CurrentUser  = Depends(get_current_user),
+) -> list:
+    token_manager = TokenManager()
+    return await token_manager.get_token_audit(current_user.profil_id, limit=limit)
+
+
+@router.get(
+    "/admin/audit/{profil_id}",
+    summary = "Audit tokens d'un profil (admin)",
+)
+async def get_token_audit_admin(
+    profil_id   : str,
+    limit       : int         = 50,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> list:
+    from uuid import UUID
+    from app.core.exceptions import PermissionDeniedError
+    if not current_user.is_admin():
+        raise PermissionDeniedError("iam.audit.consulter")
+    token_manager = TokenManager()
+    return await token_manager.get_token_audit(UUID(profil_id), limit=limit)
+
+
+@router.get(
+    "/sessions/detailed",
+    summary = "Sessions détaillées avec infos device",
+)
+async def get_sessions_detailed(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> list:
+    token_manager = TokenManager()
+    return await token_manager.get_user_sessions_detailed(current_user.profil_id)
+
+
+@router.get(
+    "/sessions/stats",
+    summary = "Statistiques des sessions",
+)
+async def get_sessions_stats_v2(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    token_manager = TokenManager()
+    return await token_manager.get_sessions_stats(current_user.profil_id)
+
+
+@router.delete(
+    "/sessions",
+    status_code = 204,
+    summary     = "Révoquer toutes mes sessions",
+)
+async def revoke_all_sessions(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> None:
+    token_manager = TokenManager()
+    await token_manager.revoke_user_sessions(
+        current_user.profil_id, reason="user_logout_all"
+    )
+

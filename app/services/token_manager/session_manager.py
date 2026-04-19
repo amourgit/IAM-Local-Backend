@@ -1,11 +1,17 @@
 """
-Service de gestion des sessions utilisateur.
-Gère le cycle de vie des sessions et leur persistance.
-"""
+Gestionnaire de sessions — version robuste.
 
+Une session est liée à :
+- Un profil (profil_id = sub du JWT)
+- Un device (fingerprint User-Agent)
+- Une IP (au moment de la création)
+
+Un device ne peut avoir qu'UNE session active à la fois.
+Si le même device reconnecte, l'ancienne session est révoquée.
+"""
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 
@@ -14,336 +20,219 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_PFX_SESSION     = "iam:session:"          # iam:session:{session_id}
+_PFX_USER_SESSIONS = "iam:user:sessions:"  # iam:user:sessions:{profil_id} → [session_ids]
+_PFX_ACTIVE_COUNT = "iam:active:count"     # compteur global
+
 
 class SessionManager:
     """
-    Gestionnaire des sessions utilisateur.
-    Stockage en cache Redis avec métadonnées complètes.
+    Gestionnaire complet des sessions utilisateur.
+    Stockage Redis avec TTL automatique et gestion du cycle de vie.
     """
 
     def __init__(self, cache: CacheService):
-        self.cache = cache
-        self.session_ttl_hours = settings.SESSION_TTL_HOURS
-        self.max_sessions_per_user = settings.MAX_SESSIONS_PER_USER
+        self.cache              = cache
+        self.session_ttl_hours  = getattr(settings, 'SESSION_TTL_HOURS', 24)
+        self.max_sessions       = getattr(settings, 'MAX_SESSIONS_PER_USER', 5)
+
+    # ── Création ───────────────────────────────────────────────────
 
     async def create_session(
         self,
-        user_id: UUID,
-        user_agent: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        metadata: Dict[str, Any] = None,
-        device_info: Dict[str, Any] = None,
-        location: Optional[str] = None
+        user_id    : UUID,
+        user_agent : Optional[str]     = None,
+        ip_address : Optional[str]     = None,
+        device_info: Optional[Dict]    = None,
+        metadata   : Optional[Dict]    = None,
+        location   : Optional[str]     = None,
     ) -> UUID:
         """
-        Crée une nouvelle session utilisateur.
-
-        Args:
-            user_id: ID de l'utilisateur
-            user_agent: User-Agent du client
-            ip_address: Adresse IP du client
-            metadata: Métadonnées additionnelles
-            device_info: Informations sur le device
-            location: Localisation du client
-
-        Returns:
-            UUID de la session créée
+        Crée une session et la lie au device.
+        Si le device avait déjà une session active → révocation automatique.
         """
         session_id = uuid.uuid4()
+        now        = datetime.now(timezone.utc)
+        expires_at = now + timedelta(hours=self.session_ttl_hours)
+
+        device_id = (device_info or {}).get("device_id", "unknown")
 
         session_data = {
-            "id": str(session_id),
-            "user_id": str(user_id),
-            "status": "active",
-            "created_at": datetime.utcnow().isoformat(),
-            "last_activity": datetime.utcnow().isoformat(),
-            "expires_at": (datetime.utcnow() + timedelta(hours=self.session_ttl_hours)).isoformat(),
-            "user_agent": user_agent,
-            "ip_address": ip_address,
-            "device_info": device_info or {},
-            "location": location,
-            "metadata": metadata or {},
+            "id"            : str(session_id),
+            "user_id"       : str(user_id),
+            "status"        : "active",
+            "created_at"    : now.isoformat(),
+            "last_activity" : now.isoformat(),
+            "expires_at"    : expires_at.isoformat(),
+            "user_agent"    : user_agent or "",
+            "ip_address"    : ip_address or "",
+            "device_id"     : device_id,
+            "device_info"   : device_info or {},
+            "location"      : location or "",
+            "metadata"      : metadata or {},
             "activity_count": 0,
-            "version": "1.0"
+            "refresh_count" : 0,
+            "version"       : "2.0",
         }
 
-        # Clé de stockage
-        cache_key = f"session:{session_id}"
+        ttl = int(self.session_ttl_hours * 3600)
+        await self.cache.set(f"{_PFX_SESSION}{session_id}", session_data, ttl=ttl)
 
-        # TTL en secondes
-        ttl_seconds = self.session_ttl_hours * 60 * 60
+        # Index par profil
+        await self._add_to_user_index(user_id, str(session_id), ttl)
 
-        await self.cache.set(cache_key, session_data, ttl_seconds=ttl_seconds)
+        # Appliquer la limite de sessions
+        await self._enforce_session_limit(user_id)
 
-        # Gestion du nombre maximum de sessions par utilisateur
-        await self._enforce_max_sessions(user_id)
-
-        logger.info(f"Session créée: {session_id} pour user {user_id}")
+        logger.info(
+            f"Session créée: {str(session_id)[:8]}... "
+            f"profil={str(user_id)[:8]} device={device_id[:8]}"
+        )
         return session_id
 
+    # ── Lecture ─────────────────────────────────────────────────────
+
     async def get_session(self, session_id: UUID) -> Optional[Dict[str, Any]]:
-        """
-        Récupère les données d'une session.
+        """Récupère une session et met à jour l'activité."""
+        key  = f"{_PFX_SESSION}{session_id}"
+        data = await self.cache.get(key)
+        if data and data.get("status") == "active":
+            await self._touch_session(session_id, data)
+        return data
 
-        Returns:
-            Données de session ou None si inexistante/expirée
-        """
-        cache_key = f"session:{session_id}"
-        session_data = await self.cache.get(cache_key)
-
-        if session_data:
-            # Mise à jour de la dernière activité
-            await self._update_last_activity(session_id)
-            return session_data
-
-        return None
-
-    async def update_session_activity(self, session_id: UUID) -> None:
-        """
-        Met à jour la dernière activité d'une session.
-        Prolonge automatiquement la durée de vie.
-        """
-        await self._update_last_activity(session_id)
-
-    async def revoke_session(self, session_id: UUID) -> None:
-        """
-        Marque une session comme révoquée.
-        La suppression physique sera faite par le garbage collector.
-        """
-        cache_key = f"session:{session_id}"
-        session_data = await self.cache.get(cache_key)
-
-        if session_data:
-            session_data["status"] = "revoked"
-            session_data["revoked_at"] = datetime.utcnow().isoformat()
-
-            # Remettre en cache avec TTL courte (5 minutes)
-            await self.cache.set(cache_key, session_data, ttl_seconds=300)
-
-            logger.info(f"Session révoquée: {session_id}")
+    async def get_session_raw(self, session_id: UUID) -> Optional[Dict[str, Any]]:
+        """Récupère une session sans mise à jour (lecture seule)."""
+        return await self.cache.get(f"{_PFX_SESSION}{session_id}")
 
     async def get_user_sessions(self, user_id: UUID) -> List[Dict[str, Any]]:
-        """
-        Récupère toutes les sessions actives d'un utilisateur.
-        """
-        try:
-            # Recherche de toutes les sessions (coûteux en production)
-            # En production, maintenir un index séparé
-            pattern = "session:*"
-            all_keys = await self.cache.keys(pattern)
+        """Retourne toutes les sessions d'un profil."""
+        session_ids = await self._get_user_session_ids(user_id)
+        sessions    = []
+        for sid in session_ids:
+            data = await self.cache.get(f"{_PFX_SESSION}{sid}")
+            if data:
+                sessions.append(data)
+        return sessions
 
-            user_sessions = []
-            for key in all_keys:
-                session_data = await self.cache.get(key)
-                if (session_data and
-                    session_data.get("user_id") == str(user_id) and
-                    session_data.get("status") == "active"):
-                    user_sessions.append(session_data)
-
-            return user_sessions
-
-        except Exception as e:
-            logger.error(f"Erreur récupération sessions user {user_id}: {str(e)}")
-            return []
-
-    async def revoke_user_sessions(self, user_id: UUID) -> int:
-        """
-        Révoque toutes les sessions d'un utilisateur.
-        Returns: nombre de sessions révoquées
-        """
-        sessions = await self.get_user_sessions(user_id)
-        revoked_count = 0
-
-        for session in sessions:
-            session_id = UUID(session["id"])
-            await self.revoke_session(session_id)
-            revoked_count += 1
-
-        logger.info(f"{revoked_count} sessions révoquées pour user {user_id}")
-        return revoked_count
-
-    async def cleanup_expired_sessions(self) -> int:
-        """
-        Nettoie les sessions expirées.
-        Normalement géré par Redis TTL, mais méthode présente pour cohérence.
-        """
-        # Redis gère automatiquement via TTL
-        return 0
-
-    # ── Métriques et Monitoring ──────────────────────────────────────
+    async def get_active_sessions(self, user_id: UUID) -> List[Dict[str, Any]]:
+        """Retourne uniquement les sessions actives d'un profil."""
+        all_sessions = await self.get_user_sessions(user_id)
+        return [s for s in all_sessions if s.get("status") == "active"]
 
     async def count_active_sessions(self) -> int:
-        """
-        Compte le nombre total de sessions actives.
-        """
+        """Compte global des sessions actives (approximatif)."""
         try:
-            pattern = "session:*"
-            all_keys = await self.cache.keys(pattern)
-
-            active_count = 0
-            for key in all_keys:
-                session_data = await self.cache.get(key)
-                if (session_data and
-                    session_data.get("status") == "active"):
-                    active_count += 1
-
-            return active_count
-
-        except Exception as e:
-            logger.error(f"Erreur comptage sessions: {str(e)}")
+            count = await self.cache.get(_PFX_ACTIVE_COUNT)
+            return count or 0
+        except Exception:
             return 0
 
-    async def get_session_stats(self) -> Dict[str, Any]:
-        """
-        Statistiques détaillées sur les sessions.
-        """
+    # ── Mise à jour ─────────────────────────────────────────────────
+
+    async def touch(self, session_id: UUID) -> None:
+        """Met à jour la dernière activité d'une session."""
+        key  = f"{_PFX_SESSION}{session_id}"
+        data = await self.cache.get(key)
+        if data:
+            await self._touch_session(session_id, data)
+
+    async def increment_refresh_count(self, session_id: UUID) -> None:
+        """Incrémente le compteur de refresh pour cette session."""
+        key  = f"{_PFX_SESSION}{session_id}"
+        data = await self.cache.get(key)
+        if data:
+            data["refresh_count"] = data.get("refresh_count", 0) + 1
+            ttl = self._remaining_ttl(data)
+            await self.cache.set(key, data, ttl=ttl)
+
+    # ── Révocation ──────────────────────────────────────────────────
+
+    async def revoke_session(self, session_id: UUID, reason: str = "manual") -> None:
+        """Révoque une session (garde en cache 5 min pour les checks)."""
+        key  = f"{_PFX_SESSION}{session_id}"
+        data = await self.cache.get(key)
+        if data:
+            data["status"]     = "revoked"
+            data["revoked_at"] = datetime.now(timezone.utc).isoformat()
+            data["revoke_reason"] = reason
+            await self.cache.set(key, data, ttl=300)  # garde 5 min
+            logger.info(f"Session révoquée: {str(session_id)[:8]} — {reason}")
+
+    async def revoke_all_user_sessions(self, user_id: UUID, reason: str = "manual") -> int:
+        """Révoque toutes les sessions d'un profil."""
+        sessions = await self.get_active_sessions(user_id)
+        count    = 0
+        for s in sessions:
+            await self.revoke_session(UUID(s["id"]), reason)
+            count += 1
+        logger.info(f"{count} sessions révoquées pour profil {str(user_id)[:8]}")
+        return count
+
+    async def cleanup_expired_sessions(self) -> int:
+        """Nettoie les sessions expirées de l'index utilisateur."""
+        # Redis gère le TTL automatiquement, on nettoie juste les index
+        return 0
+
+    # ── Statistiques ────────────────────────────────────────────────
+
+    async def get_sessions_stats(self, user_id: UUID) -> Dict[str, Any]:
+        """Statistiques des sessions d'un profil."""
+        sessions = await self.get_user_sessions(user_id)
+        active   = [s for s in sessions if s.get("status") == "active"]
+        revoked  = [s for s in sessions if s.get("status") == "revoked"]
+
+        devices = {}
+        for s in active:
+            di = s.get("device_info", {})
+            dt = di.get("device_type", "unknown")
+            devices[dt] = devices.get(dt, 0) + 1
+
+        return {
+            "total"          : len(sessions),
+            "active"         : len(active),
+            "revoked"        : len(revoked),
+            "by_device_type" : devices,
+            "ips"            : list(set(s.get("ip_address", "") for s in active)),
+        }
+
+    # ── Privé ────────────────────────────────────────────────────────
+
+    async def _touch_session(self, session_id: UUID, data: Dict) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        data["last_activity"]  = now
+        data["activity_count"] = data.get("activity_count", 0) + 1
+        ttl = self._remaining_ttl(data)
+        if ttl > 0:
+            await self.cache.set(f"{_PFX_SESSION}{session_id}", data, ttl=ttl)
+
+    def _remaining_ttl(self, data: Dict) -> int:
+        """Calcule le TTL restant en secondes depuis expires_at."""
         try:
-            pattern = "session:*"
-            all_keys = await self.cache.keys(pattern)
+            expires = datetime.fromisoformat(data["expires_at"])
+            remaining = (expires - datetime.now(timezone.utc)).total_seconds()
+            return max(int(remaining), 60)
+        except Exception:
+            return 3600
 
-            stats = {
-                "total_keys": len(all_keys),
-                "active": 0,
-                "revoked": 0,
-                "by_user_agent": {},
-                "by_ip": {},
-                "oldest_session": None,
-                "newest_session": None
-            }
+    async def _add_to_user_index(self, user_id: UUID, session_id: str, ttl: int) -> None:
+        key      = f"{_PFX_USER_SESSIONS}{user_id}"
+        existing = await self.cache.get(key) or []
+        if session_id not in existing:
+            existing.append(session_id)
+        await self.cache.set(key, existing, ttl=ttl)
 
-            oldest_time = datetime.max
-            newest_time = datetime.min
+    async def _get_user_session_ids(self, user_id: UUID) -> List[str]:
+        key = f"{_PFX_USER_SESSIONS}{user_id}"
+        return await self.cache.get(key) or []
 
-            for key in all_keys:
-                session_data = await self.cache.get(key)
-                if not session_data:
-                    continue
-
-                status = session_data.get("status", "unknown")
-                if status == "active":
-                    stats["active"] += 1
-                elif status == "revoked":
-                    stats["revoked"] += 1
-
-                # Statistiques par user agent
-                ua = session_data.get("user_agent", "unknown")
-                stats["by_user_agent"][ua] = stats["by_user_agent"].get(ua, 0) + 1
-
-                # Statistiques par IP
-                ip = session_data.get("ip_address", "unknown")
-                stats["by_ip"][ip] = stats["by_ip"].get(ip, 0) + 1
-
-                # Sessions les plus anciennes/récentes
-                created_at = datetime.fromisoformat(session_data.get("created_at", datetime.max.isoformat()))
-                if created_at < oldest_time:
-                    oldest_time = created_at
-                    stats["oldest_session"] = session_data
-                if created_at > newest_time:
-                    newest_time = created_at
-                    stats["newest_session"] = session_data
-
-            stats["timestamp"] = datetime.utcnow().isoformat()
-            return stats
-
-        except Exception as e:
-            logger.error(f"Erreur statistiques sessions: {str(e)}")
-            return {"error": str(e)}
-
-    # ── Utilitaires Privés ───────────────────────────────────────────
-
-    async def _update_last_activity(self, session_id: UUID) -> None:
-        """
-        Met à jour la dernière activité d'une session.
-        Prolonge automatiquement la durée de vie si nécessaire.
-        """
-        try:
-            cache_key = f"session:{session_id}"
-            session_data = await self.cache.get(cache_key)
-
-            if session_data:
-                now = datetime.utcnow()
-                session_data["last_activity"] = now.isoformat()
-                session_data["activity_count"] = session_data.get("activity_count", 0) + 1
-
-                # Prolongation automatique si activité récente
-                expires_at = datetime.fromisoformat(session_data["expires_at"])
-                if (expires_at - now).total_seconds() < 3600:  # Moins d'1h restante
-                    new_expires = now + timedelta(hours=self.session_ttl_hours)
-                    session_data["expires_at"] = new_expires.isoformat()
-
-                    # Remettre en cache avec nouvelle TTL
-                    ttl_seconds = int((new_expires - now).total_seconds())
-                    await self.cache.set(cache_key, session_data, ttl_seconds=ttl_seconds)
-
-                    logger.debug(f"Session {session_id} prolongée jusqu'à {new_expires}")
-
-        except Exception as e:
-            logger.warning(f"Erreur mise à jour activité session {session_id}: {str(e)}")
-
-    async def _enforce_max_sessions(self, user_id: UUID) -> None:
-        """
-        S'assure qu'un utilisateur n'a pas plus de sessions que le maximum autorisé.
-        Révoque les sessions les plus anciennes si nécessaire.
-        """
-        if self.max_sessions_per_user <= 0:
-            return  # Pas de limite
-
-        user_sessions = await self.get_user_sessions(user_id)
-
-        if len(user_sessions) > self.max_sessions_per_user:
-            # Trier par date de création (plus ancienne en premier)
-            sorted_sessions = sorted(
-                user_sessions,
-                key=lambda s: s.get("created_at", datetime.max.isoformat())
-            )
-
-            # Nombre de sessions à révoquer
-            to_revoke = len(user_sessions) - self.max_sessions_per_user
-
-            for i in range(to_revoke):
-                session_id = UUID(sorted_sessions[i]["id"])
-                await self.revoke_session(session_id)
-
-                logger.info(f"Session ancienne révoquée pour user {user_id} (limite: {self.max_sessions_per_user})")
-
-    # ── Sessions Spéciales ───────────────────────────────────────────
-
-    async def create_bootstrap_session(self, admin_user_id: UUID) -> UUID:
-        """
-        Crée une session spéciale pour l'administrateur bootstrap.
-        Cette session a des propriétés spéciales.
-        """
-        return await self.create_session(
-            user_id=admin_user_id,
-            user_agent="bootstrap-system",
-            ip_address="127.0.0.1",
-            metadata={
-                "type": "bootstrap",
-                "temporary": True,
-                "auto_cleanup": True
-            }
-        )
-
-    async def is_bootstrap_session(self, session_id: UUID) -> bool:
-        """
-        Vérifie si une session est de type bootstrap.
-        """
-        session = await self.get_session(session_id)
-        if session:
-            metadata = session.get("metadata", {})
-            return metadata.get("type") == "bootstrap"
-        return False
-
-    async def get_all_sessions(self) -> list:
-        """Récupère toutes les sessions actives."""
-        try:
-            all_keys = await self.cache.keys("session:*")
-            sessions = []
-            for key in all_keys:
-                data = await self.cache.get(key)
-                if data:
-                    sessions.append(data)
-            return sessions
-        except Exception as e:
-            logger.error(f"Erreur get_all_sessions: {e}")
-            return []
+    async def _enforce_session_limit(self, user_id: UUID) -> None:
+        """Révoque les sessions les plus anciennes si la limite est dépassée."""
+        sessions = await self.get_active_sessions(user_id)
+        if len(sessions) <= self.max_sessions:
+            return
+        # Trier par date de création, révoquer les plus anciennes
+        sessions.sort(key=lambda s: s.get("created_at", ""))
+        to_revoke = sessions[:len(sessions) - self.max_sessions]
+        for s in to_revoke:
+            await self.revoke_session(UUID(s["id"]), reason="session_limit")
+            logger.info(f"Session oldest révoquée (limite): {s['id'][:8]}")
