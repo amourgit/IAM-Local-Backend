@@ -220,7 +220,7 @@ class HabilitationService:
             )
             return resultat
 
-        if profil.statut != "actif":
+        if profil.statut not in ["actif", "bootstrap"]:
             resultat = ResultatVerificationSchema(
                 autorise         = False,
                 permission       = data.permission,

@@ -187,7 +187,7 @@ class ProfilService:
         compte = await self.compte_repo.get_by_id(data.compte_id)
         if not compte:
             raise NotFoundError("CompteLocal", str(data.compte_id))
-        if compte.statut != "actif":
+        if compte.statut not in ["actif", "bootstrap"]:
             raise ValidationError(
                 f"Impossible de créer un profil pour un compte {compte.statut}."
             )
@@ -474,7 +474,7 @@ class ProfilService:
         profil = await self.repo.get_by_id(data.profil_id)
         if not profil:
             raise NotFoundError("Profil", str(data.profil_id))
-        if profil.statut != "actif":
+        if profil.statut not in ["actif", "bootstrap"]:
             raise ValidationError(
                 "Impossible d'assigner un rôle à un profil inactif."
             )

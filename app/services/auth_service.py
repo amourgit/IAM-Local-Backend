@@ -164,7 +164,7 @@ class AuthService:
         )
 
         # 2. Vérifier statut du profil
-        if profil.statut != "actif":
+        if profil.statut not in ["actif", "bootstrap"]:
             raise AuthenticationError(f"Profil {profil.statut}")
 
         # 3. Vérifier statut du compte

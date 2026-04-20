@@ -306,7 +306,7 @@ class CredentialService:
             select(ProfilLocal).where(
                 and_(
                     ProfilLocal.compte_id  == compte_id,
-                    ProfilLocal.statut     == "actif",
+                    ProfilLocal.statut.in_(["actif", "bootstrap"]),
                     ProfilLocal.is_deleted == False,
                 )
             ).order_by(ProfilLocal.created_at).limit(1)
