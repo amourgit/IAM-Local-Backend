@@ -1,0 +1,1159 @@
+{
+  "_meta": {
+    "version": "2.0",
+    "source_code": "iam-local",
+    "description": "Données de référence natives du module IAM Local",
+    "note": "Chargé automatiquement par le bootstrap. Idempotent."
+  },
+  "source": {
+    "code": "iam-local",
+    "nom": "IAM Local",
+    "description": "Module IAM Local de l'établissement",
+    "version": "1.0.0"
+  },
+  "permissions": [
+    {
+      "code": "iam.permission.administrer",
+      "nom": "Administrer les permissions",
+      "domaine": "iam",
+      "ressource": "permission",
+      "action": "administrer"
+    },
+    {
+      "code": "iam.permission.consulter",
+      "nom": "Consulter les permissions",
+      "domaine": "iam",
+      "ressource": "permission",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.role.creer",
+      "nom": "Créer un rôle",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "creer"
+    },
+    {
+      "code": "iam.role.consulter",
+      "nom": "Consulter les rôles",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.role.modifier",
+      "nom": "Modifier un rôle",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "modifier"
+    },
+    {
+      "code": "iam.role.supprimer",
+      "nom": "Supprimer un rôle",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "supprimer"
+    },
+    {
+      "code": "iam.role.assigner",
+      "nom": "Assigner un rôle",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "assigner"
+    },
+    {
+      "code": "iam.role.revoquer",
+      "nom": "Révoquer un rôle",
+      "domaine": "iam",
+      "ressource": "role",
+      "action": "revoquer"
+    },
+    {
+      "code": "iam.groupe.creer",
+      "nom": "Créer un groupe",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "creer"
+    },
+    {
+      "code": "iam.groupe.consulter",
+      "nom": "Consulter les groupes",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.groupe.modifier",
+      "nom": "Modifier un groupe",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "modifier"
+    },
+    {
+      "code": "iam.groupe.supprimer",
+      "nom": "Supprimer un groupe",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "supprimer"
+    },
+    {
+      "code": "iam.groupe.membre.ajouter",
+      "nom": "Ajouter un membre",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "membre.ajouter"
+    },
+    {
+      "code": "iam.groupe.membre.retirer",
+      "nom": "Retirer un membre",
+      "domaine": "iam",
+      "ressource": "groupe",
+      "action": "membre.retirer"
+    },
+    {
+      "code": "iam.profil.creer",
+      "nom": "Créer un profil",
+      "domaine": "iam",
+      "ressource": "profil",
+      "action": "creer"
+    },
+    {
+      "code": "iam.profil.consulter",
+      "nom": "Consulter les profils",
+      "domaine": "iam",
+      "ressource": "profil",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.profil.modifier",
+      "nom": "Modifier un profil",
+      "domaine": "iam",
+      "ressource": "profil",
+      "action": "modifier"
+    },
+    {
+      "code": "iam.profil.suspendre",
+      "nom": "Suspendre un profil",
+      "domaine": "iam",
+      "ressource": "profil",
+      "action": "suspendre"
+    },
+    {
+      "code": "iam.profil.supprimer",
+      "nom": "Supprimer un profil",
+      "domaine": "iam",
+      "ressource": "profil",
+      "action": "supprimer"
+    },
+    {
+      "code": "iam.compte.consulter",
+      "nom": "Consulter les comptes",
+      "domaine": "iam",
+      "ressource": "compte",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.compte.creer",
+      "nom": "Créer un compte",
+      "domaine": "iam",
+      "ressource": "compte",
+      "action": "creer"
+    },
+    {
+      "code": "iam.compte.modifier",
+      "nom": "Modifier un compte",
+      "domaine": "iam",
+      "ressource": "compte",
+      "action": "modifier"
+    },
+    {
+      "code": "iam.compte.suspendre",
+      "nom": "Suspendre un compte",
+      "domaine": "iam",
+      "ressource": "compte",
+      "action": "suspendre"
+    },
+    {
+      "code": "iam.compte.supprimer",
+      "nom": "Supprimer un compte",
+      "domaine": "iam",
+      "ressource": "compte",
+      "action": "supprimer"
+    },
+    {
+      "code": "iam.habilitation.consulter",
+      "nom": "Consulter les habilitations",
+      "domaine": "iam",
+      "ressource": "habilitation",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.habilitation.verifier",
+      "nom": "Vérifier une permission",
+      "domaine": "iam",
+      "ressource": "habilitation",
+      "action": "verifier"
+    },
+    {
+      "code": "iam.delegation.creer",
+      "nom": "Créer une délégation",
+      "domaine": "iam",
+      "ressource": "delegation",
+      "action": "creer"
+    },
+    {
+      "code": "iam.delegation.consulter",
+      "nom": "Consulter les délégations",
+      "domaine": "iam",
+      "ressource": "delegation",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.delegation.revoquer",
+      "nom": "Révoquer une délégation",
+      "domaine": "iam",
+      "ressource": "delegation",
+      "action": "revoquer"
+    },
+    {
+      "code": "iam.audit.consulter",
+      "nom": "Consulter l'audit",
+      "domaine": "iam",
+      "ressource": "audit",
+      "action": "consulter"
+    },
+    {
+      "code": "iam.configuration.administrer",
+      "nom": "Administrer la configuration",
+      "domaine": "iam",
+      "ressource": "configuration",
+      "action": "administrer"
+    }
+  ],
+  "roles": [
+    {
+      "code": "iam.admin",
+      "nom": "Administrateur IAM",
+      "description": "Accès complet à toutes les fonctions IAM",
+      "type_role": "systeme",
+      "systeme": true,
+      "permissions": "$ALL"
+    },
+    {
+      "code": "iam.manager",
+      "nom": "Manager IAM",
+      "description": "Gestion des profils, rôles et groupes",
+      "type_role": "fonctionnel",
+      "systeme": false,
+      "permissions": [
+        "iam.permission.consulter",
+        "iam.role.consulter",
+        "iam.role.assigner",
+        "iam.role.revoquer",
+        "iam.groupe.consulter",
+        "iam.groupe.membre.ajouter",
+        "iam.groupe.membre.retirer",
+        "iam.profil.creer",
+        "iam.profil.consulter",
+        "iam.profil.modifier",
+        "iam.profil.suspendre",
+        "iam.compte.consulter",
+        "iam.habilitation.consulter",
+        "iam.habilitation.verifier",
+        "iam.audit.consulter"
+      ]
+    },
+    {
+      "code": "iam.reader",
+      "nom": "Lecteur IAM",
+      "description": "Consultation uniquement",
+      "type_role": "fonctionnel",
+      "systeme": false,
+      "permissions": [
+        "iam.permission.consulter",
+        "iam.role.consulter",
+        "iam.groupe.consulter",
+        "iam.profil.consulter",
+        "iam.compte.consulter",
+        "iam.habilitation.consulter",
+        "iam.audit.consulter"
+      ]
+    },
+    {
+      "code": "iam.system",
+      "nom": "Système IAM",
+      "description": "Compte système pour intégrations inter-modules",
+      "type_role": "systeme",
+      "systeme": true,
+      "permissions": [
+        "iam.habilitation.verifier",
+        "iam.profil.consulter",
+        "iam.compte.consulter"
+      ]
+    },
+    {
+      "code": "iam.admin_temp",
+      "nom": "Administrateur Temporaire Bootstrap",
+      "description": "Rôle temporaire — à supprimer après installation",
+      "type_role": "temporaire",
+      "systeme": false,
+      "permissions": [
+        "iam.profil.creer",
+        "iam.profil.consulter",
+        "iam.profil.modifier",
+        "iam.compte.consulter",
+        "iam.compte.creer",
+        "iam.role.consulter",
+        "iam.role.assigner",
+        "iam.groupe.consulter",
+        "iam.groupe.membre.ajouter"
+      ]
+    }
+  ],
+  "groupes": [
+    {
+      "code": "super_admin",
+      "nom": "Super Administrateurs",
+      "description": "Groupe des super administrateurs de l'établissement",
+      "type_groupe": "fonctionnel",
+      "systeme": true,
+      "roles": [
+        "iam.admin"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "path": "/api/v1/tokens/login",
+      "method": "POST",
+      "public": true,
+      "permissions": [],
+      "description": "Authentification"
+    },
+    {
+      "path": "/api/v1/tokens/refresh",
+      "method": "POST",
+      "public": true,
+      "permissions": [],
+      "description": "Rafraîchissement token"
+    },
+    {
+      "path": "/api/v1/tokens/validate",
+      "method": "POST",
+      "public": false,
+      "permissions": [],
+      "description": "Validation token (tout user authentifié)"
+    },
+    {
+      "path": "/api/v1/tokens/check-authorization",
+      "method": "POST",
+      "public": false,
+      "permissions": [],
+      "description": "Vérification autorisation"
+    },
+    {
+      "path": "/api/v1/tokens/logout",
+      "method": "POST",
+      "public": false,
+      "permissions": [],
+      "description": "Déconnexion"
+    },
+    {
+      "path": "/api/v1/tokens/change-password",
+      "method": "POST",
+      "public": false,
+      "permissions": [],
+      "description": "Changement de mot de passe"
+    },
+    {
+      "path": "/api/v1/tokens/sessions",
+      "method": "GET",
+      "public": false,
+      "permissions": [],
+      "description": "Mes sessions actives"
+    },
+    {
+      "path": "/api/v1/tokens/sessions/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [],
+      "description": "Révoquer une session"
+    },
+    {
+      "path": "/api/v1/tokens/sessions",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [],
+      "description": "Révoquer toutes mes sessions"
+    },
+    {
+      "path": "/api/v1/tokens/sessions/detailed",
+      "method": "GET",
+      "public": false,
+      "permissions": [],
+      "description": "Sessions avec détails device"
+    },
+    {
+      "path": "/api/v1/tokens/sessions/stats",
+      "method": "GET",
+      "public": false,
+      "permissions": [],
+      "description": "Stats sessions"
+    },
+    {
+      "path": "/api/v1/tokens/devices",
+      "method": "GET",
+      "public": false,
+      "permissions": [],
+      "description": "Mes devices"
+    },
+    {
+      "path": "/api/v1/tokens/devices/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [],
+      "description": "Révoquer un device"
+    },
+    {
+      "path": "/api/v1/tokens/devices/{id}/trust",
+      "method": "POST",
+      "public": false,
+      "permissions": [],
+      "description": "Trust device"
+    },
+    {
+      "path": "/api/v1/tokens/devices",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [],
+      "description": "Révoquer tous les devices"
+    },
+    {
+      "path": "/api/v1/tokens/audit",
+      "method": "GET",
+      "public": false,
+      "permissions": [],
+      "description": "Historique audit tokens"
+    },
+    {
+      "path": "/api/v1/tokens/metrics",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Métriques tokens"
+    },
+    {
+      "path": "/api/v1/tokens/sync/{id}",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Sync IAM Central"
+    },
+    {
+      "path": "/api/v1/tokens/sync/status",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Statut sync"
+    },
+    {
+      "path": "/api/v1/tokens/admin/reset-password",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Reset password admin"
+    },
+    {
+      "path": "/api/v1/tokens/admin/audit/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.audit.consulter"
+      ],
+      "description": "Audit tokens profil (admin)"
+    },
+    {
+      "path": "/api/v1/token-config/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Créer config token"
+    },
+    {
+      "path": "/api/v1/token-config/active",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Config active"
+    },
+    {
+      "path": "/api/v1/token-config/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Liste configs"
+    },
+    {
+      "path": "/api/v1/token-config/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Détail config"
+    },
+    {
+      "path": "/api/v1/token-config/{id}",
+      "method": "PUT",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Modifier config"
+    },
+    {
+      "path": "/api/v1/token-config/{id}/activate",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Activer config"
+    },
+    {
+      "path": "/api/v1/token-config/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Supprimer config"
+    },
+    {
+      "path": "/api/v1/token-config/refresh-cache",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Refresh cache config"
+    },
+    {
+      "path": "/api/v1/comptes/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Lister les comptes"
+    },
+    {
+      "path": "/api/v1/comptes/stats/resume",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Stats comptes"
+    },
+    {
+      "path": "/api/v1/comptes/recherche/par-identifiant/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Recherche par identifiant national"
+    },
+    {
+      "path": "/api/v1/comptes/recherche/par-email/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Recherche par email"
+    },
+    {
+      "path": "/api/v1/comptes/recherche/par-user-national/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Recherche par user national"
+    },
+    {
+      "path": "/api/v1/comptes/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Détail compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}/profils",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Profils d'un compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}/profils/count",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.compte.consulter"
+      ],
+      "description": "Nombre profils compte"
+    },
+    {
+      "path": "/api/v1/comptes/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.compte.creer"
+      ],
+      "description": "Créer un compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.compte.modifier"
+      ],
+      "description": "Modifier un compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}/suspendre",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.compte.suspendre"
+      ],
+      "description": "Suspendre un compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}/reactiver",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.compte.modifier"
+      ],
+      "description": "Réactiver un compte"
+    },
+    {
+      "path": "/api/v1/comptes/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.compte.supprimer"
+      ],
+      "description": "Supprimer un compte"
+    },
+    {
+      "path": "/api/v1/profils/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Lister les profils"
+    },
+    {
+      "path": "/api/v1/profils/stats/resume",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Stats profils"
+    },
+    {
+      "path": "/api/v1/profils/par-compte/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Profils par compte"
+    },
+    {
+      "path": "/api/v1/profils/par-compte/{id}/count",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Nb profils par compte"
+    },
+    {
+      "path": "/api/v1/profils/par-user-national/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Profils par user national"
+    },
+    {
+      "path": "/api/v1/profils/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Détail profil"
+    },
+    {
+      "path": "/api/v1/profils/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.profil.creer"
+      ],
+      "description": "Créer un profil avec credentials"
+    },
+    {
+      "path": "/api/v1/profils/sans-credentials",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.profil.creer"
+      ],
+      "description": "Créer profil sans credentials"
+    },
+    {
+      "path": "/api/v1/profils/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.profil.modifier"
+      ],
+      "description": "Modifier un profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}/suspendre",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.profil.suspendre"
+      ],
+      "description": "Suspendre un profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}/reactiver",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.profil.modifier"
+      ],
+      "description": "Réactiver un profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.profil.supprimer"
+      ],
+      "description": "Supprimer un profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}/roles",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.role.assigner"
+      ],
+      "description": "Assigner rôle à profil"
+    },
+    {
+      "path": "/api/v1/profils/roles/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.role.revoquer"
+      ],
+      "description": "Révoquer rôle de profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}/groupes",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.profil.consulter"
+      ],
+      "description": "Groupes d'un profil"
+    },
+    {
+      "path": "/api/v1/profils/{id}/habilitations",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.habilitation.consulter"
+      ],
+      "description": "Habilitations profil"
+    },
+    {
+      "path": "/api/v1/roles/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.role.consulter"
+      ],
+      "description": "Lister les rôles"
+    },
+    {
+      "path": "/api/v1/roles/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.role.consulter"
+      ],
+      "description": "Détail rôle"
+    },
+    {
+      "path": "/api/v1/roles/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.role.creer"
+      ],
+      "description": "Créer un rôle"
+    },
+    {
+      "path": "/api/v1/roles/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.role.modifier"
+      ],
+      "description": "Modifier un rôle"
+    },
+    {
+      "path": "/api/v1/roles/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.role.supprimer"
+      ],
+      "description": "Supprimer un rôle"
+    },
+    {
+      "path": "/api/v1/roles/{id}/permissions",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.role.consulter"
+      ],
+      "description": "Permissions d'un rôle"
+    },
+    {
+      "path": "/api/v1/roles/{id}/permissions",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.permission.administrer"
+      ],
+      "description": "Ajouter permission à rôle"
+    },
+    {
+      "path": "/api/v1/roles/{id}/permissions/{pid}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.permission.administrer"
+      ],
+      "description": "Retirer permission de rôle"
+    },
+    {
+      "path": "/api/v1/permissions/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.permission.consulter"
+      ],
+      "description": "Lister les permissions"
+    },
+    {
+      "path": "/api/v1/permissions/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.permission.consulter"
+      ],
+      "description": "Détail permission"
+    },
+    {
+      "path": "/api/v1/permissions/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.permission.administrer"
+      ],
+      "description": "Créer une permission"
+    },
+    {
+      "path": "/api/v1/permissions/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.permission.administrer"
+      ],
+      "description": "Modifier une permission"
+    },
+    {
+      "path": "/api/v1/permissions/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.permission.administrer"
+      ],
+      "description": "Supprimer une permission"
+    },
+    {
+      "path": "/api/v1/groupes/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.groupe.consulter"
+      ],
+      "description": "Lister les groupes"
+    },
+    {
+      "path": "/api/v1/groupes/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.groupe.consulter"
+      ],
+      "description": "Détail groupe"
+    },
+    {
+      "path": "/api/v1/groupes/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.groupe.creer"
+      ],
+      "description": "Créer un groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.groupe.modifier"
+      ],
+      "description": "Modifier un groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.groupe.supprimer"
+      ],
+      "description": "Supprimer un groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/membres",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.groupe.consulter"
+      ],
+      "description": "Membres d'un groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/membres",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.groupe.membre.ajouter"
+      ],
+      "description": "Ajouter membre"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/membres/{mid}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.groupe.membre.retirer"
+      ],
+      "description": "Retirer membre"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/roles",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.groupe.consulter"
+      ],
+      "description": "Rôles d'un groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/roles",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.groupe.modifier"
+      ],
+      "description": "Ajouter rôle au groupe"
+    },
+    {
+      "path": "/api/v1/groupes/{id}/roles/{rid}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.groupe.modifier"
+      ],
+      "description": "Retirer rôle du groupe"
+    },
+    {
+      "path": "/api/v1/habilitations/verifier",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.habilitation.verifier"
+      ],
+      "description": "Vérifier une permission"
+    },
+    {
+      "path": "/api/v1/habilitations/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.habilitation.consulter"
+      ],
+      "description": "Habilitations d'un profil"
+    },
+    {
+      "path": "/api/v1/delegations/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.delegation.consulter"
+      ],
+      "description": "Lister les délégations"
+    },
+    {
+      "path": "/api/v1/delegations/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.delegation.consulter"
+      ],
+      "description": "Détail délégation"
+    },
+    {
+      "path": "/api/v1/delegations/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.delegation.creer"
+      ],
+      "description": "Créer une délégation"
+    },
+    {
+      "path": "/api/v1/delegations/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.delegation.revoquer"
+      ],
+      "description": "Révoquer délégation"
+    },
+    {
+      "path": "/api/v1/journal/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.audit.consulter"
+      ],
+      "description": "Journal d'accès"
+    },
+    {
+      "path": "/api/v1/journal/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.audit.consulter"
+      ],
+      "description": "Détail entrée journal"
+    },
+    {
+      "path": "/api/v1/sources/",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Lister les sources"
+    },
+    {
+      "path": "/api/v1/sources/",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Enregistrer une source"
+    },
+    {
+      "path": "/api/v1/sources/{id}",
+      "method": "GET",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Détail source"
+    },
+    {
+      "path": "/api/v1/sources/{id}",
+      "method": "PATCH",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Modifier source"
+    },
+    {
+      "path": "/api/v1/sources/{id}",
+      "method": "DELETE",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Supprimer source"
+    },
+    {
+      "path": "/api/v1/sources/{id}/sync",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Synchroniser endpoints/permissions source"
+    }
+  ]
+}

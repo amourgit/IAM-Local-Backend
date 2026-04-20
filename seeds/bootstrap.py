@@ -60,6 +60,7 @@ class BootstrapService:
             "permissions"      : {"crees": 0, "existantes": 0},
             "roles"            : {"crees": 0, "existants": 0},
             "groupes"          : {"crees": 0, "existants": 0},
+            "endpoints"        : {"crees": 0, "existants": 0},
             "profil_bootstrap" : None,
             "token"            : None,
             "deja_fait"        : False,
@@ -79,27 +80,38 @@ class BootstrapService:
                 )
             return rapport
 
-        # ── 2. Créer/vérifier la source IAM et les seeds ──────────
-        source = await self._get_ou_creer_source_iam()
-        rapport["source"] = str(source.id)
-
-        perms_map = await self._get_ou_creer_permissions(source)
-        rapport["permissions"]["crees"] = len(perms_map)
-
-        roles_map = await self._get_ou_creer_roles(perms_map)
-        rapport["roles"]["crees"] = len(roles_map)
-
-        await self._get_ou_creer_groupes(roles_map)
-        rapport["groupes"]["crees"] = 1
-
+        # ── 2. Charger les seeds depuis iam_seed.json ─────────────
+        from seeds.seed_loader import SeedLoader
+        seed_loader = SeedLoader(self.db)
+        seeds_rapport = await seed_loader.run()
         await self.db.commit()
-        logger.info(f"   → Seeds créés : {len(perms_map)} permissions, {len(roles_map)} rôles")
 
-        # ── 3. Créer le CompteLocal + ProfilLocal bootstrap ────────
+        rapport["source"]      = seeds_rapport["source"]
+        rapport["permissions"] = seeds_rapport["permissions"]
+        rapport["roles"]       = seeds_rapport["roles"]
+        rapport["groupes"]     = seeds_rapport["groupes"]
+        rapport["endpoints"]   = seeds_rapport["endpoints"]
+
+        logger.info(
+            f"   → Seeds: {seeds_rapport['permissions']['crees']} permissions, "
+            f"{seeds_rapport['roles']['crees']} rôles, "
+            f"{seeds_rapport['groupes']['crees']} groupes, "
+            f"{seeds_rapport['endpoints']['crees']} endpoints"
+        )
+
+        # ── 3. Récupérer les rôles pour le profil bootstrap ───────
+        from app.models.role import Role
+        from sqlalchemy import select
+        result = await self.db.execute(
+            select(Role).where(Role.is_deleted == False)
+        )
+        roles_map = {r.code: r for r in result.scalars().all()}
+
+        # ── 4. Créer le CompteLocal + ProfilLocal bootstrap ────────
         profil = await self._creer_profil_bootstrap(roles_map)
         rapport["profil_bootstrap"] = str(profil.id)
 
-        # ── 4. Générer token + session Redis ──────────────────────
+        # ── 5. Générer token + session Redis ──────────────────────
         token = await self._generer_token(profil)
         rapport["token"] = token
 
@@ -115,7 +127,7 @@ class BootstrapService:
 
         return rapport
 
-    # ── Idempotence ───────────────────────────────────────────────
+        # ── Idempotence ───────────────────────────────────────────────
 
     async def _bootstrap_deja_effectue(self) -> bool:
         # Vérifier si un admin réel (rôle iam.admin) existe
