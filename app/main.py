@@ -17,6 +17,86 @@ from app.infrastructure.kafka.consumer import KafkaConsumer
 logger = logging.getLogger(__name__)
 
 
+async def _run_seed_sync(db) -> None:
+    """
+    Synchronise iam_seed.json → DB à chaque démarrage.
+
+    Règle fondamentale :
+    - JSON présent, DB absente  → INSERT (nouveau élément ajouté dans le JSON)
+    - JSON présent, DB présente → SKIP   (idempotent)
+    - DB présente, JSON absent  → SKIP   (créé via API, on ne touche pas)
+
+    Erreur de chargement → log + continue (le serveur ne crashe PAS).
+    """
+    try:
+        from seeds.seed_loader import SeedLoader
+        loader  = SeedLoader(db)
+        rapport = await loader.run()
+
+        total_new = (
+            rapport["permissions"]["ajoutees"]
+            + rapport["roles"]["ajoutes"]
+            + rapport["groupes"]["ajoutes"]
+            + rapport["endpoints"]["ajoutes"]
+        )
+
+        if not rapport["ok"] and rapport["erreurs"]:
+            logger.warning(
+                f"SeedSync: terminé avec {len(rapport['erreurs'])} avertissement(s). "
+                "Le serveur continue normalement."
+            )
+
+        if total_new > 0:
+            await db.commit()
+            logger.info(f"SeedSync: {total_new} élément(s) synchronisé(s) depuis iam_seed.json")
+        else:
+            logger.info("SeedSync: aucun changement détecté")
+
+    except Exception as e:
+        # Le SeedLoader ne devrait jamais lever — mais on est paranoïaque
+        logger.error(
+            f"SeedSync: erreur inattendue — {e}. "
+            "Le serveur continue normalement sans synchronisation."
+        )
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+
+async def _run_bootstrap(db) -> None:
+    """
+    Bootstrap initial (une seule fois) : crée le profil admin temporaire.
+    Idempotent : ne fait rien si déjà effectué.
+    """
+    try:
+        from seeds.bootstrap import BootstrapService
+        service = BootstrapService(db)
+        rapport = await service.run()
+
+        if not rapport["deja_fait"] and rapport.get("token"):
+            import json
+            from pathlib import Path
+            creds_path = Path("bootstrap_credentials.json")
+            with open(creds_path, "w") as f:
+                json.dump({
+                    "profil_id" : rapport["profil_bootstrap"],
+                    "token"     : rapport["token"],
+                    "expires_in": "48h",
+                    "warning"   : (
+                        "TOKEN PRIVILÉGIÉ — "
+                        "SUPPRIMER CE FICHIER APRÈS USAGE"
+                    ),
+                }, f, indent=2)
+            logger.warning(
+                "🔐 BOOTSTRAP — bootstrap_credentials.json généré. "
+                "Créez l'admin réel puis supprimez ce fichier."
+            )
+
+    except Exception as e:
+        logger.error(f"Bootstrap: erreur (non bloquant) — {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────
@@ -37,33 +117,16 @@ async def lifespan(app: FastAPI):
     app.state.consumer_task  = consumer_task
     logger.info("Kafka consumer démarré")
 
-    # Bootstrap automatique après migration
-    try:
-        from app.database import AsyncSessionLocal
-        from seeds.bootstrap import BootstrapService
-        async with AsyncSessionLocal() as db:
-            service = BootstrapService(db)
-            rapport = await service.run()
-            if not rapport["deja_fait"] and rapport["token"]:
-                import json
-                from pathlib import Path
-                creds_path = Path("bootstrap_credentials.json")
-                with open(creds_path, "w") as f:
-                    json.dump({
-                        "profil_id"  : rapport["profil_bootstrap"],
-                        "token"      : rapport["token"],
-                        "expires_in" : "48h",
-                        "warning"    : (
-                            "TOKEN PRIVILÉGIÉ — "
-                            "SUPPRIMER CE FICHIER APRÈS USAGE"
-                        ),
-                    }, f, indent=2)
-                logger.warning(
-                    "🔐 BOOTSTRAP — credentials.json généré. "
-                    "Créez l'admin réel puis supprimez ce fichier."
-                )
-    except Exception as e:
-        logger.error(f"Bootstrap error (non bloquant) : {e}")
+    # ── Séquence de démarrage ─────────────────────────────────
+    from app.database import AsyncSessionLocal
+
+    # ÉTAPE 1 : Synchronisation seeds (à chaque démarrage)
+    async with AsyncSessionLocal() as db:
+        await _run_seed_sync(db)
+
+    # ÉTAPE 2 : Bootstrap profil admin (une seule fois)
+    async with AsyncSessionLocal() as db:
+        await _run_bootstrap(db)
 
     yield
 
@@ -90,9 +153,8 @@ app = FastAPI(
 # ── Middlewares ───────────────────────────────────────────
 # Ordre important : le dernier ajouté est le premier exécuté
 
-app.add_middleware(PermissionMiddleware)   # ✅ Nouveau — vérification permissions dynamique
-app.add_middleware(AuditMiddleware)        # Audit des accès
-# GatewayMiddleware retiré — remplacé par PermissionMiddleware
+app.add_middleware(PermissionMiddleware)
+app.add_middleware(AuditMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins     = ["*"],

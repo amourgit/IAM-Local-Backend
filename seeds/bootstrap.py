@@ -1,17 +1,20 @@
 """
-Bootstrap IAM Local — Orchestration idempotente.
-Crée les seeds (source, permissions, rôles, groupes)
-puis le CompteLocal + ProfilLocal bootstrap avec session Redis et token JWT.
-Peut être relancé sans risque : détecte ce qui existe déjà.
+Bootstrap IAM Local — Création du profil administrateur temporaire.
+
+Le SeedLoader s'est déjà exécuté avant ce bootstrap (cf. app/main.py).
+Le bootstrap ne s'occupe donc que de :
+1. Vérifier si déjà effectué
+2. Créer le CompteLocal + ProfilLocal bootstrap
+3. Assigner le rôle iam.admin_temp
+4. Générer token JWT 48h + session Redis
 """
 import logging
-import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, text
+from sqlalchemy import select, and_
 
 from app.models.permission_source import PermissionSource
 from app.models.permission import Permission
@@ -38,13 +41,10 @@ DATA_DIR = Path(__file__).parent / "data"
 
 class BootstrapService:
     """
-    Orchestrateur du bootstrap IAM Local. Toutes les méthodes sont idempotentes.
+    Orchestrateur du bootstrap IAM Local.
+    Idempotent : peut être relancé sans risque.
 
-    Responsabilités :
-    1. Créer la source IAM + permissions + rôles + groupes (seeds)
-    2. Créer le CompteLocal + ProfilLocal bootstrap
-    3. Assigner le rôle iam.admin_temp au profil bootstrap
-    4. Créer une session Redis + générer le token JWT 48h
+    Pré-requis : SeedLoader a déjà été exécuté (seeds en DB).
     """
 
     def __init__(self, db: AsyncSession):
@@ -80,34 +80,22 @@ class BootstrapService:
                 )
             return rapport
 
-        # ── 2. Charger les seeds depuis iam_seed.json ─────────────
-        from seeds.seed_loader import SeedLoader
-        seed_loader = SeedLoader(self.db)
-        seeds_rapport = await seed_loader.run()
-        await self.db.commit()
+        # ── 2. Vérifier que les seeds sont en DB ──────────────────
+        source = await self._get_source_iam()
+        if not source:
+            raise Exception(
+                "Source iam-local introuvable en DB. "
+                "Le SeedLoader aurait dû la créer au démarrage. "
+                "Vérifiez les logs du SeedLoader."
+            )
+        rapport["source"] = str(source.id)
 
-        rapport["source"]      = seeds_rapport["source"]
-        rapport["permissions"] = seeds_rapport["permissions"]
-        rapport["roles"]       = seeds_rapport["roles"]
-        rapport["groupes"]     = seeds_rapport["groupes"]
-        rapport["endpoints"]   = seeds_rapport["endpoints"]
+        # ── 3. Récupérer les rôles ─────────────────────────────────
+        roles_map = await self._get_roles()
+        rapport["roles"]["existants"] = len(roles_map)
+        logger.info(f"   → {len(roles_map)} rôles en DB")
 
-        logger.info(
-            f"   → Seeds: {seeds_rapport['permissions']['crees']} permissions, "
-            f"{seeds_rapport['roles']['crees']} rôles, "
-            f"{seeds_rapport['groupes']['crees']} groupes, "
-            f"{seeds_rapport['endpoints']['crees']} endpoints"
-        )
-
-        # ── 3. Récupérer les rôles pour le profil bootstrap ───────
-        from app.models.role import Role
-        from sqlalchemy import select
-        result = await self.db.execute(
-            select(Role).where(Role.is_deleted == False)
-        )
-        roles_map = {r.code: r for r in result.scalars().all()}
-
-        # ── 4. Créer le CompteLocal + ProfilLocal bootstrap ────────
+        # ── 4. Créer le profil bootstrap ──────────────────────────
         profil = await self._creer_profil_bootstrap(roles_map)
         rapport["profil_bootstrap"] = str(profil.id)
 
@@ -127,7 +115,7 @@ class BootstrapService:
 
         return rapport
 
-        # ── Idempotence ───────────────────────────────────────────────
+    # ── Idempotence ───────────────────────────────────────────────
 
     async def _bootstrap_deja_effectue(self) -> bool:
         # Vérifier si un admin réel (rôle iam.admin) existe
@@ -169,7 +157,6 @@ class BootstrapService:
                 .where(
                     and_(
                         CompteLocal.identifiant_national == BOOTSTRAP_IDENTIFIANT,
-                        CompteLocal.statut               == BOOTSTRAP_STATUT,
                         CompteLocal.is_deleted           == False,
                         ProfilLocal.is_deleted           == False,
                     )
@@ -179,189 +166,17 @@ class BootstrapService:
         except Exception:
             return None
 
-    # ── Seeds ─────────────────────────────────────────────────────
-
-    async def _get_ou_creer_source_iam(self) -> PermissionSource:
+    async def _get_source_iam(self) -> Optional[PermissionSource]:
         result = await self.db.execute(
             select(PermissionSource).where(PermissionSource.code == IAM_SOURCE_CODE)
         )
-        source = result.scalar_one_or_none()
-        if source:
-            return source
+        return result.scalar_one_or_none()
 
-        source = PermissionSource(
-            code          = IAM_SOURCE_CODE,
-            nom           = "IAM Local",
-            description   = "Module IAM Local de l'établissement",
-            version       = "1.0.0",
-            actif         = True,
-            nb_permissions= 0,
-        )
-        self.db.add(source)
-        await self.db.flush()
-        return source
-
-    async def _get_ou_creer_permissions(self, source: PermissionSource) -> dict:
-        permissions_data = [
-            ("iam.permission.administrer", "Administrer les permissions", "iam", "permission", "administrer"),
-            ("iam.permission.consulter",   "Consulter les permissions",   "iam", "permission", "consulter"),
-            ("iam.role.creer",             "Creer un role",               "iam", "role",       "creer"),
-            ("iam.role.consulter",         "Consulter les roles",         "iam", "role",       "consulter"),
-            ("iam.role.modifier",          "Modifier un role",            "iam", "role",       "modifier"),
-            ("iam.role.supprimer",         "Supprimer un role",           "iam", "role",       "supprimer"),
-            ("iam.role.assigner",          "Assigner un role",            "iam", "role",       "assigner"),
-            ("iam.role.revoquer",          "Revoquer un role",            "iam", "role",       "revoquer"),
-            ("iam.groupe.creer",           "Creer un groupe",             "iam", "groupe",     "creer"),
-            ("iam.groupe.consulter",       "Consulter les groupes",       "iam", "groupe",     "consulter"),
-            ("iam.groupe.modifier",        "Modifier un groupe",          "iam", "groupe",     "modifier"),
-            ("iam.groupe.supprimer",       "Supprimer un groupe",         "iam", "groupe",     "supprimer"),
-            ("iam.groupe.membre.ajouter",  "Ajouter un membre au groupe", "iam", "groupe",     "membre.ajouter"),
-            ("iam.groupe.membre.retirer",  "Retirer un membre du groupe", "iam", "groupe",     "membre.retirer"),
-            ("iam.profil.creer",           "Creer un profil",             "iam", "profil",     "creer"),
-            ("iam.profil.consulter",       "Consulter les profils",       "iam", "profil",     "consulter"),
-            ("iam.profil.modifier",        "Modifier un profil",          "iam", "profil",     "modifier"),
-            ("iam.profil.suspendre",       "Suspendre un profil",         "iam", "profil",     "suspendre"),
-            ("iam.profil.supprimer",       "Supprimer un profil",         "iam", "profil",     "supprimer"),
-            ("iam.compte.consulter",       "Consulter les comptes",       "iam", "compte",     "consulter"),
-            ("iam.compte.creer",           "Creer un compte",             "iam", "compte",     "creer"),
-            ("iam.compte.modifier",        "Modifier un compte",          "iam", "compte",     "modifier"),
-            ("iam.compte.suspendre",       "Suspendre un compte",         "iam", "compte",     "suspendre"),
-            ("iam.compte.supprimer",       "Supprimer un compte",         "iam", "compte",     "supprimer"),
-            ("iam.habilitation.consulter", "Consulter les habilitations", "iam", "habilitation","consulter"),
-            ("iam.habilitation.verifier",  "Verifier une permission",     "iam", "habilitation","verifier"),
-            ("iam.delegation.creer",       "Creer une delegation",        "iam", "delegation", "creer"),
-            ("iam.delegation.consulter",   "Consulter les delegations",   "iam", "delegation", "consulter"),
-            ("iam.delegation.revoquer",    "Revoquer une delegation",     "iam", "delegation", "revoquer"),
-            ("iam.audit.consulter",        "Consulter l audit",           "iam", "audit",      "consulter"),
-            ("iam.configuration.administrer","Administrer la config",     "iam", "configuration","administrer"),
-        ]
-
-        perm_map = {}
-        for code, nom, domaine, ressource, action in permissions_data:
-            result = await self.db.execute(
-                select(Permission).where(Permission.code == code)
-            )
-            p = result.scalar_one_or_none()
-            if not p:
-                p = Permission(
-                    source_id  = source.id,
-                    code       = code,
-                    nom        = nom,
-                    domaine    = domaine,
-                    ressource  = ressource,
-                    action     = action,
-                    actif      = True,
-                )
-                self.db.add(p)
-                await self.db.flush()
-            perm_map[code] = p
-
-        source.nb_permissions = len(perm_map)
-        self.db.add(source)
-        return perm_map
-
-    async def _get_ou_creer_roles(self, perms_map: dict) -> dict:
-        all_perms = list(perms_map.keys())
-        roles_data = {
-            "iam.admin": {
-                "nom": "Administrateur IAM", "type": "systeme", "systeme": True,
-                "perms": all_perms,
-            },
-            "iam.manager": {
-                "nom": "Manager IAM", "type": "fonctionnel", "systeme": False,
-                "perms": [
-                    "iam.permission.consulter","iam.role.consulter","iam.role.assigner",
-                    "iam.role.revoquer","iam.groupe.consulter","iam.groupe.membre.ajouter",
-                    "iam.groupe.membre.retirer","iam.profil.creer","iam.profil.consulter",
-                    "iam.profil.modifier","iam.profil.suspendre","iam.compte.consulter",
-                    "iam.habilitation.consulter","iam.habilitation.verifier","iam.audit.consulter",
-                ],
-            },
-            "iam.reader": {
-                "nom": "Lecteur IAM", "type": "fonctionnel", "systeme": False,
-                "perms": [
-                    "iam.permission.consulter","iam.role.consulter","iam.groupe.consulter",
-                    "iam.profil.consulter","iam.compte.consulter",
-                    "iam.habilitation.consulter","iam.audit.consulter",
-                ],
-            },
-            "iam.system": {
-                "nom": "Systeme IAM", "type": "systeme", "systeme": True,
-                "perms": [
-                    "iam.habilitation.verifier","iam.profil.consulter","iam.compte.consulter",
-                ],
-            },
-            "iam.admin_temp": {
-                "nom": "Administrateur Temporaire Bootstrap",
-                "type": "temporaire", "systeme": False,
-                "perms": [
-                    "iam.profil.creer","iam.profil.consulter","iam.profil.modifier",
-                    "iam.compte.consulter","iam.compte.creer",
-                    "iam.role.consulter","iam.role.assigner",
-                    "iam.groupe.consulter","iam.groupe.membre.ajouter",
-                ],
-            },
-        }
-
-        from app.models.role import role_permissions_table
-        from sqlalchemy import insert
-
-        roles_map = {}
-        for code, data in roles_data.items():
-            result = await self.db.execute(
-                select(Role).where(Role.code == code)
-            )
-            role = result.scalar_one_or_none()
-            if not role:
-                role = Role(
-                    code     = code,
-                    nom      = data["nom"],
-                    type_role= data["type"],
-                    actif    = True,
-                    systeme  = data["systeme"],
-                )
-                self.db.add(role)
-                await self.db.flush()
-
-                # Assigner les permissions via la table d'association
-                for pcode in data["perms"]:
-                    if pcode in perms_map:
-                        await self.db.execute(
-                            insert(role_permissions_table).values(
-                                role_id       = role.id,
-                                permission_id = perms_map[pcode].id,
-                            )
-                        )
-
-            roles_map[code] = role
-
-        return roles_map
-
-    async def _get_ou_creer_groupes(self, roles_map: dict) -> None:
-        from app.models.groupe import GroupeRole
-
+    async def _get_roles(self) -> dict:
         result = await self.db.execute(
-            select(Groupe).where(Groupe.code == "super_admin")
+            select(Role).where(Role.is_deleted == False)
         )
-        groupe = result.scalar_one_or_none()
-        if not groupe:
-            groupe = Groupe(
-                code        = "super_admin",
-                nom         = "Super Administrateurs",
-                description = "Groupe des super administrateurs",
-                type_groupe = "fonctionnel",
-                actif       = True,
-                systeme     = True,
-            )
-            self.db.add(groupe)
-            await self.db.flush()
-
-            if "iam.admin" in roles_map:
-                grp_role = GroupeRole(
-                    groupe_id = groupe.id,
-                    role_id   = roles_map["iam.admin"].id,
-                )
-                self.db.add(grp_role)
+        return {r.code: r for r in result.scalars().all()}
 
     # ── Profil bootstrap ──────────────────────────────────────────
 
@@ -382,14 +197,14 @@ class BootstrapService:
             password                = "BootstrapTemp@2024!",
             require_password_change = False,
             meta_data = {
-                "bootstrap"   : True,
-                "cree_le"     : datetime.now(timezone.utc).isoformat(),
-                "expire_le"   : (
+                "bootstrap"  : True,
+                "cree_le"    : datetime.now(timezone.utc).isoformat(),
+                "expire_le"  : (
                     datetime.now(timezone.utc)
                     + timedelta(hours=BOOTSTRAP_TOKEN_EXPIRE_HOURS)
                 ).isoformat(),
-                "created_by"  : "system_bootstrap",
-                "role"        : ROLE_TEMP_CODE,
+                "created_by" : "system_bootstrap",
+                "role"       : ROLE_TEMP_CODE,
             },
             notes = (
                 "Profil temporaire créé au bootstrap. "
@@ -403,20 +218,13 @@ class BootstrapService:
             request_id = "bootstrap_initialization",
         )
 
-        # Marquer le CompteLocal comme bootstrap
-        from app.repositories.compte_local import CompteLocalRepository
-        compte_repo = CompteLocalRepository(self.db)
-        compte = await compte_repo.get_by_id(profil_response.compte_id)
-        if compte:
-            await compte_repo.update(compte, {"statut": BOOTSTRAP_STATUT})
-
         # Récupérer le ProfilLocal ORM
         from app.repositories.profil_local import ProfilLocalRepository
         profil_repo = ProfilLocalRepository(self.db)
         profil = await profil_repo.get_by_id(profil_response.id)
         await profil_repo.update(profil, {"statut": BOOTSTRAP_STATUT})
 
-        # Assigner le rôle iam.admin_temp au ProfilLocal
+        # Assigner le rôle iam.admin_temp
         role_temp = roles_map.get(ROLE_TEMP_CODE)
         if role_temp:
             from app.schemas.assignation import AssignationRoleCreateSchema
@@ -430,9 +238,9 @@ class BootstrapService:
                 created_by = profil.id,
                 request_id = "bootstrap_initialization",
             )
-            logger.info(f"   ✅ ProfilLocal bootstrap créé — rôle {ROLE_TEMP_CODE} assigné")
+            logger.info(f"   ✅ Profil bootstrap créé — rôle {ROLE_TEMP_CODE} assigné")
         else:
-            logger.error(f"   ❌ Rôle {ROLE_TEMP_CODE} introuvable")
+            logger.error(f"   ❌ Rôle {ROLE_TEMP_CODE} introuvable en DB")
 
         return profil
 
@@ -451,8 +259,8 @@ class BootstrapService:
             .join(Role, Role.id == role_permissions_table.c.role_id)
             .where(
                 and_(
-                    Role.code            == ROLE_TEMP_CODE,
-                    Permission.actif     == True,
+                    Role.code             == ROLE_TEMP_CODE,
+                    Permission.actif      == True,
                     Permission.is_deleted == False,
                 )
             )
