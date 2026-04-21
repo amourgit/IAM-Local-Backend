@@ -1154,6 +1154,33 @@
         "iam.configuration.administrer"
       ],
       "description": "Synchroniser endpoints/permissions source"
+    },
+    {
+      "path": "/api/v1/habilitations/verifier-batch",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.habilitation.verifier"
+      ],
+      "description": "Vérification batch de plusieurs permissions"
+    },
+    {
+      "path": "/api/v1/habilitations/admin/invalider-cache-role/{id}",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Invalider cache habilitations par rôle"
+    },
+    {
+      "path": "/api/v1/habilitations/admin/invalider-cache-groupe/{id}",
+      "method": "POST",
+      "public": false,
+      "permissions": [
+        "iam.configuration.administrer"
+      ],
+      "description": "Invalider cache habilitations par groupe"
     }
   ]
 }
