@@ -524,6 +524,11 @@ class ProfilService:
             },
         )
 
+        # Invalider le cache — le profil a un nouveau rôle
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.repo.db)
+        await hab_service.invalider_cache(data.profil_id)
+
         return AssignationRoleResponseSchema.model_validate(assignation)
 
     async def revoquer_role(
@@ -561,6 +566,11 @@ class ProfilService:
                 "raison"    : data.raison_revocation,
             },
         )
+
+        # Invalider le cache — le profil a perdu un rôle
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.repo.db)
+        await hab_service.invalider_cache(assignation.profil_id)
 
     # ── Helpers internes ─────────────────────────────────
 
