@@ -142,6 +142,11 @@ class GroupeService:
                 groupe_id, role_id, data.perimetre, updated_by, data.raison
             )
 
+        # Invalider le cache de tous les membres du groupe
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.repo.db)
+        await hab_service.invalider_cache_groupe(groupe_id)
+
         groupe = await self.repo.get_by_id_with_roles(groupe_id)
         return GroupeResponseSchema.model_validate(groupe)
 
@@ -157,6 +162,11 @@ class GroupeService:
             raise NotFoundError("Groupe", str(groupe_id))
 
         await self.repo.retirer_role(groupe_id, role_id, updated_by)
+
+        # Invalider le cache de tous les membres du groupe
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.repo.db)
+        await hab_service.invalider_cache_groupe(groupe_id)
 
         groupe = await self.repo.get_by_id_with_roles(groupe_id)
         return GroupeResponseSchema.model_validate(groupe)
@@ -194,6 +204,11 @@ class GroupeService:
             },
         )
 
+        # Invalider le cache du nouveau membre — il hérite des rôles du groupe
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.repo.db)
+        await hab_service.invalider_cache(data.profil_id)
+
         return AssignationGroupeResponseSchema.model_validate(assignation)
 
     async def retirer_membre(
@@ -207,6 +222,11 @@ class GroupeService:
         )
         if not assignation:
             raise NotFoundError("Assignation groupe", str(assignation_id))
+
+        # Invalider le cache du membre retiré — il perd les rôles du groupe
+        from app.services.habilitation_service import HabilitationService
+        hab_service = HabilitationService(self.assign_repo.db)
+        await hab_service.invalider_cache(assignation.profil_id)
 
     async def delete(self, id: UUID, deleted_by: UUID) -> None:
         groupe = await self.repo.get_by_id(id)

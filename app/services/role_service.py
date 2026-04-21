@@ -220,11 +220,10 @@ class RoleService:
                 )
 
     async def _invalider_cache_role(self, role_id: UUID) -> None:
-        """Invalide le cache habilitations de tous les profils ayant ce rôle."""
-        from app.repositories.assignation_role import AssignationRoleRepository
+        """
+        Invalide le cache habilitations de tous les profils ayant ce rôle.
+        Inclut : profils directs + membres de groupes ayant ce rôle.
+        """
         from app.services.habilitation_service import HabilitationService
-        assign_repo = AssignationRoleRepository(self.repo.db)
-        assignations = await assign_repo.get_by_role(role_id)
         hab_service = HabilitationService(self.repo.db)
-        for assignation in assignations:
-            await hab_service.invalider_cache(assignation.profil_id)
+        await hab_service.invalider_cache_role(role_id)
