@@ -45,6 +45,14 @@ class AssignationGroupe(BaseModel):
     date_retrait = Column(DateTime(timezone=True), nullable=True)
     raison      = Column(Text, nullable=True)
 
+    # Périmètre de l'appartenance au groupe
+    # Surcharge le périmètre global du groupe si défini
+    perimetre = Column(
+        JSONB,
+        nullable = True,
+        comment  = "Périmètre spécifique à cette appartenance au groupe"
+    )
+
     meta_data = Column(JSONB, nullable=True, default=dict)
 
     # Relations

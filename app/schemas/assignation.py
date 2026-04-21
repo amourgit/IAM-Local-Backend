@@ -44,6 +44,7 @@ class AssignationRoleResponseSchema(BaseResponseSchema):
 class AssignationGroupeCreateSchema(BaseSchema):
     profil_id  : UUID
     groupe_id  : UUID
+    perimetre  : Optional[Any]      = None
     date_debut : Optional[datetime] = None
     date_fin   : Optional[datetime] = None
     raison     : Optional[str]      = None
@@ -52,6 +53,7 @@ class AssignationGroupeCreateSchema(BaseSchema):
 class AssignationGroupeResponseSchema(BaseResponseSchema):
     profil_id    : UUID
     groupe_id    : UUID
+    perimetre    : Optional[Any]      = None
     statut       : str
     date_debut   : Optional[datetime] = None
     date_fin     : Optional[datetime] = None
